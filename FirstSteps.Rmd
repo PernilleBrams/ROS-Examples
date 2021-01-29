@@ -1,0 +1,130 @@
+---
+title: "ElectionEconomy"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+Regression is a method that allows researchers to summarize how predictions or average values of an outcome vary across individuals defined by a set of predictors. For example, Figure 1.1a shows the incumbent party’s vote share in a series of U.S. presidential elections, plotted vs. a measure of economic growth in the period leading up to each election year. 
+
+Figure 1.1b shows a linear regression fit to these data. 
+
+The model allows us to predict the vote—with some uncertainty—given the economy and under the assumption that future elections are in some way like the past.
+Then we estimate the regression, y = a + bx + error:2 M1 <- stan_glm(vote ~ growth, data=hibbs)
+And then we add the fitted line to our graph:
+   abline(coef(M1), col="gray")
+   
+# Setup
+```{r}
+pacman::p_load(rstanarm, arm, rprojroot)
+```
+
+# ELECTIONS ECONOMY DATA
+```{r}
+getwd()
+
+# Get data
+hibbs <- read.table("/Users/pernillebrams/Desktop/UNI/4th semester/CompMod/ROS-Examples/ElectionsEconomy/data/hibbs.dat", header = TRUE)
+View(hibbs)
+
+# Scatterplot
+plot(hibbs$growth, hibbs$vote, xlab = "Avg recent growth in personal income", ylab = "Incumbent party's vote share")
+
+# Estimate regression y = a + bx + error: 
+model <- stan_glm(vote ~ growth, data = hibbs)
+
+# Add fitted line to graph (have to run the two below simultaneously)
+plot(hibbs$growth, hibbs$vote, xlab = "Avg recent growth in personal income", ylab = "Incumbent party's vote share")
+abline(coef(model),col = "red")
+
+# Display fitted model
+print(model)
+```
+First column shows the coefficients of the fitted line: y = ax + b in the sense that: y = 3x + 46.3
+Second column shows the uncertainties in the estimates using median absolute deviations.
+Last line of output shows estimate and uncertainty of sigma, σ, the scale of variation in the data that is UNEXPLAINED by the regression model.
+
+# SIMPLE CAUSAL DATA
+## Simulated data from linear model
+```{r}
+set.seed(1151)
+N <- 50
+x <- runif(N, 1, 5)
+y <- rnorm(N, 10 + 3*x, 3)
+x_binary <- ifelse(x<3, 0, 1)
+data <- data.frame(N, x, y, x_binary)
+
+```
+
+## Regression with binary predictor
+```{r}
+lm_1a <- lm(y ~ x_binary, data = data)
+display(lm_1a)
+```
+
+## Plots
+```{r}
+par(mar=c(3, 3, 1.5, 1), mgp=c(1.7, .5, 0), tck=-.01)
+plot(x_binary, y, xlab="", ylab="Outcome measurement", pch=20, cex=.5, bty="l", main="Regression with binary treatment", cex.main=.9, xaxt="n", cex.lab=.9, cex.axis=.9)
+axis(1, c(0,1), c("    Control", "Treatment    "), cex.axis=.9)
+abline(coef(lm_1a)[1], coef(lm_1a)[2])
+text(0.3, 13, paste("Estimated treatment effect is\nslope of fitted line: ", fround(coef(lm_1a)[2], 1)), cex=.8, adj=0)
+```
+## Regression with continuous predictor
+```{r}
+lm_1b <- lm(y ~ x, data = data)
+display(lm_1b)
+```
+## Plots
+```{r}
+par(mar=c(3, 3, 1.5, 1), mgp=c(1.7, .5, 0), tck=-.01)
+plot(x, y, xlab="Treatment level", ylab="Outcome measurement", pch=20, cex=.5, bty="l", main="Regression with continuous treatment", cex.main=.9, cex.lab=.9, cex.axis=.9)
+abline(coef(lm_1b)[1], coef(lm_1b)[2])
+text(3.2, 15, paste("Estimated treatment\neffect per unit of x is\nslope of fitted line: ", fround(coef(lm_1b)[2], 1)), cex=.8, adj=0)
+```
+## Classical regression with continuous predictor
+```{r}
+lm_2a <- lm(y ~ x, data = data)
+display(lm_2a)
+```
+## Plots
+```{r}
+par(mar=c(3, 3, 1.5, 1), mgp=c(1.7, .5, 0), tck=-.01)
+plot(x, y, xlab="Treatment level", ylab="Outcome measurement", pch=20, cex=.5, bty="l", main="Nonlinear treatment effect", cex.main=.9, cex.lab=.9, cex.axis=.9)
+curve(5 + 30*exp(-x), add=TRUE)
+
+par(mar=c(3, 3, 1.5, 1), mgp=c(1.7, .5, 0), tck=-.01)
+plot(x, y, xlab="Treatment level", ylab="Outcome measurement", pch=20, cex=.5, bty="l", main="Nonlinear effect, estimated with straight line fit", cex.main=.9, cex.lab=.9, cex.axis=.9)
+abline(coef(lm_2a)[1], coef(lm_2a)[2])
+```
+
+# Simulated data from two groups
+```{r}
+set.seed(1151)
+N <- 100
+xx <- rnorm(N, 0, 1)^2
+z <- rep(0:1, N/2)
+xx <- ifelse(z==0, rnorm(N, 0, 1.2)^2, rnorm(N, 0, .8)^2)
+yy <- rnorm(N, 20 + 5*xx + 10*z, 3)
+data <- data.frame(xx, z, yy)
+lm_2 <- lm(yy ~ xx + z, data=data)
+display(lm_2)
+
+```
+
+## Plots
+```{r}
+par(mar=c(3, 3, 1.5, 1), mgp=c(1.7, .5, 0), tck=-.01)
+plot(xx, yy, xlab="Pre-treatment predictor", ylab="Outcome measurement", bty="l", main="Continuous pre-treatment predictor and binary treatment    ", cex.main=.9, cex.lab=.9, cex.axis=.9, type="n")
+points(xx[z==0], yy[z==0], pch=20, cex=.5)
+points(xx[z==1], yy[z==1], pch=1, cex=1)
+abline(coef(lm_2)[1], coef(lm_2)[2])
+abline(coef(lm_2)[1] + coef(lm_2)[3], coef(lm_2)[2])
+text(2.3, 29.5, "Controls", cex=.9, adj=0)
+text(1.5, 45, "Treated", cex=.9, adj=0)
+x0 <- 5.2
+arrows(x0, coef(lm_2)[1] + coef(lm_2)[2]*x0, x0, coef(lm_2)[1] + coef(lm_2)[2]*x0 + coef(lm_2)[3], length=.1, code=3)
+text(x0+.15, 1 + coef(lm_2)[1] + coef(lm_2)[2]*x0 + .5*coef(lm_2)[3], paste("Estimated\ntreatment\neffect is", fround(coef(lm_2)[3], 1)), cex=.8, adj=0)
+```
+
